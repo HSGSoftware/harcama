@@ -57,7 +57,30 @@ try {
     ");
 
     // ----------------------------------------------------------------
-    // 3. VARSAYILAN AYARLAR
+    // 3. ABONELİKLER VE TAKSİTLER TABLOSU
+    // Aylık sabit ödemeler (abonelik) ve taksitli alımlar
+    // ----------------------------------------------------------------
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            name               TEXT    NOT NULL,
+            amount             REAL    NOT NULL DEFAULT 0,
+            billing_day        INTEGER NOT NULL DEFAULT 1,
+            category           TEXT    NOT NULL DEFAULT 'Abonelik',
+            type               TEXT    NOT NULL DEFAULT 'subscription'
+                                       CHECK(type IN ('subscription','installment')),
+            total_installments INTEGER DEFAULT NULL,
+            paid_installments  INTEGER NOT NULL DEFAULT 0,
+            start_date         TEXT    NOT NULL DEFAULT (date('now')),
+            notes              TEXT    NOT NULL DEFAULT '',
+            active             INTEGER NOT NULL DEFAULT 1,
+            auto_detected      INTEGER NOT NULL DEFAULT 0,
+            created_at         TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+
+    // ----------------------------------------------------------------
+    // 4. VARSAYILAN AYARLAR
     // INSERT OR IGNORE: mevcut değerlerin üzerine yazmaz
     // ----------------------------------------------------------------
     $defaults = [

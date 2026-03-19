@@ -8,6 +8,7 @@ $page_titles = [
     'transactions'    => 'İşlemler',
     'ai_optimization' => 'AI Analiz',
     'investments'     => 'Yatırımlar',
+    'subscriptions'   => 'Abonelikler',
     'settings'        => 'Ayarlar',
 ];
 $page_title = $page_titles[$current_page] ?? 'FinansAI';
