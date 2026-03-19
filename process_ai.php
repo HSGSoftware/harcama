@@ -53,21 +53,24 @@ if (empty($api['key'])) {
     json_exit(['error' => ucfirst($provider) . ' API anahtarı ayarlanmamış. Ayarlar sayfasına gidin.']);
 }
 
-// Geliştirilmiş sistem prompt: tarih, kategori ve abonelik/taksit tespiti
+// Sistem prompt — net örnek format ve strict dizi talebi
 $system_prompt =
-    'Sen bir finansal veri ayıklama asistanısın. Sana bir banka ekstresi metni vereceğim. '
-    . 'Görevin işlemleri bulmak ve SADECE geçerli bir JSON dizisi döndürmektir. '
-    . 'Kesinlikle markdown kullanma, sohbet etme. '
-    . 'Her işlem için şu alanları doldur: '
-    . '{'
-    . '"date": "YYYY-MM-DD formatında tarih. PDF\'de tarih varsa onu çevir. Yoksa veya bulamazsan null yaz", '
-    . '"description": "İşlemin temizlenmiş, anlamlı adı. Mümkünse marka/firma adını koru", '
-    . '"amount": pozitif float sayı, '
-    . '"type": "income" veya "expense", '
-    . '"category": "Şu listeden en uygun kategori: Market, Restoran, Kafe, Ulaşım, Yakıt, Fatura, Abonelik, Teknoloji, Sağlık, Eğitim, Giyim, Eğlence, Spor, Kira, Ev, Bakım, Seyahat, Hediye, Taksit, Sigorta, Maaş, Diğer", '
-    . '"is_subscription": true eğer düzenli aylık abonelik görünüyorsa (Netflix, Spotify vb.), yoksa false, '
-    . '"is_installment": true eğer taksitli ödeme görünüyorsa (kredi kartı taksit, BNPL), yoksa false'
-    . '}.';
+    'Sen bir finansal veri ayıklama asistanısın. '
+    . 'Görevin, sana verilen banka ekstresi metninden tüm işlemleri çıkarmak ve '
+    . 'SADECE geçerli bir JSON dizisi (array) döndürmektir. '
+    . 'YASAK: markdown, kod bloğu (```), açıklama, sohbet, önsöz. '
+    . 'Yanıtın doğrudan [ ile başlayıp ] ile bitmeli. '
+    . "\n\nÖrnek çıktı:\n"
+    . '[{"date":"2024-03-15","description":"Migros Market","amount":245.80,"type":"expense","category":"Market","is_subscription":false,"is_installment":false},'
+    . '{"date":"2024-03-14","description":"Netflix","amount":79.99,"type":"expense","category":"Abonelik","is_subscription":true,"is_installment":false}]'
+    . "\n\nAlan açıklamaları:\n"
+    . '- date: YYYY-MM-DD. Belgede tarih yoksa null.\n'
+    . '- description: İşlemin kısa anlamlı adı (marka adını koru).\n'
+    . '- amount: Pozitif sayı (daima > 0).\n'
+    . '- type: "expense" (gider) veya "income" (gelir/maaş).\n'
+    . '- category: Şunlardan biri: Market, Restoran, Kafe, Ulaşım, Yakıt, Fatura, Abonelik, Teknoloji, Sağlık, Eğitim, Giyim, Eğlence, Spor, Kira, Taksit, Maaş, Diğer.\n'
+    . '- is_subscription: Netflix/Spotify/YouTube gibi aylık yenilenenler için true, diğerleri false.\n'
+    . '- is_installment: Taksitli kredi kartı ödemeleri için true, diğerleri false.';
 
 $user_text = mb_substr($pdf_text, 0, 8000);
 
@@ -131,15 +134,63 @@ if (empty($content)) {
     json_exit(['error' => 'AI boş yanıt döndürdü.']);
 }
 
-// Markdown temizle
-$content = preg_replace('/```(?:json)?\s*/i', '', $content);
-$content = preg_replace('/```/', '', $content);
+// ── Markdown / ön-ek temizleme ───────────────────────────────────
+// 1. Kod bloğu: ``` veya ```json (baştaki ve sondaki, çok satırlı)
+$content = preg_replace('/^```(?:json)?\s*/im', '', $content);
+$content = preg_replace('/\s*```\s*$/im', '', $content);
+// 2. Satır başı ve sonu gereksiz boşluk
 $content = trim($content);
 
-$transactions = json_decode($content, true);
+// Hata ayıklama: AI ham yanıtını logla (ilk 400 karakter)
+error_log('[process_ai] raw content (first 400): ' . mb_substr($content, 0, 400));
+
+// ── Sağlam JSON ayrıştırma (farklı AI yanıt formatlarını destekle) ─
+$transactions = null;
+
+// Deneme 1: Doğrudan parse (beklenen: [...])
+$decoded = json_decode($content, true);
+if (is_array($decoded)) {
+    // Düz dizi mi, yoksa tek obje mi?
+    if (isset($decoded[0]) || empty($decoded)) {
+        $transactions = $decoded; // Düz dizi ✓
+    } else {
+        // Tek obje gelmiş olabilir: {"transactions":[...]}, {"data":[...]}, vs.
+        foreach (['transactions', 'items', 'data', 'result', 'işlemler'] as $key) {
+            if (isset($decoded[$key]) && is_array($decoded[$key])) {
+                $transactions = $decoded[$key];
+                break;
+            }
+        }
+        // Objenin kendisi tek bir işlem mi?
+        if ($transactions === null && isset($decoded['amount'])) {
+            $transactions = [$decoded];
+        }
+    }
+}
+
+// Deneme 2: İçerikte JSON dizisi regex ile ara
+if ($transactions === null) {
+    if (preg_match('/(\[[\s\S]*?\])/u', $content, $m)) {
+        $try = json_decode($m[1], true);
+        if (is_array($try)) {
+            $transactions = $try;
+        }
+    }
+}
+
+// Deneme 3: İlk { ... } bloğunu al ve diziye sar
+if ($transactions === null) {
+    if (preg_match('/(\{[\s\S]*?\})/u', $content, $m)) {
+        $try = json_decode($m[1], true);
+        if (is_array($try) && isset($try['amount'])) {
+            $transactions = [$try];
+        }
+    }
+}
 
 if (!is_array($transactions) || empty($transactions)) {
-    json_exit(['error' => 'Geçerli işlem bulunamadı.', 'raw' => mb_substr($content, 0, 500)]);
+    $raw_preview = mb_substr($content, 0, 300);
+    json_exit(['error' => 'AI geçerli işlem döndürmedi. Ham yanıt: ' . $raw_preview]);
 }
 
 // Veriyi normalize et; belirsiz olanları işaretle
