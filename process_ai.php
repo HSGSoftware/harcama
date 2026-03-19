@@ -1,14 +1,32 @@
 <?php
 declare(strict_types=1);
 
+// PHP HTML hata çıktısını engelle — JSON endpoint için kritik
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
+// Beklenmedik output'ları (notice/warning HTML) yakala
+ob_start();
+
 header('Content-Type: application/json; charset=utf-8');
+
+// Buffer'ı temizleyip JSON döndüren yardımcı
+function json_exit(array $data, int $code = 200): never {
+    ob_end_clean();
+    http_response_code($code);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Yakalanmamış exception'ları JSON olarak döndür
+set_exception_handler(function (\Throwable $e): void {
+    json_exit(['error' => 'Sunucu hatası: ' . $e->getMessage()], 500);
+});
 
 require_once __DIR__ . '/init_db.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['error' => 'Yalnızca POST desteklenir.']);
-    exit;
+    json_exit(['error' => 'Yalnızca POST desteklenir.'], 405);
 }
 
 $pdo = db_connect();
@@ -29,8 +47,7 @@ if (empty($pdf_text)) {
 }
 
 if (mb_strlen($pdf_text) < 30) {
-    echo json_encode(['error' => 'PDF metni çok kısa veya boş. Lütfen geçerli bir banka ekstresi yükleyin.']);
-    exit;
+    json_exit(['error' => 'PDF metni çok kısa veya boş. Lütfen geçerli bir banka ekstresi yükleyin.']);
 }
 
 // API uç noktası ve anahtar eşlemi
@@ -43,8 +60,7 @@ $api_map = [
 $api = $api_map[$provider] ?? $api_map['groq'];
 
 if (empty($api['key'])) {
-    echo json_encode(['error' => ucfirst($provider) . ' API anahtarı ayarlanmamış. Ayarlar sayfasına gidin.']);
-    exit;
+    json_exit(['error' => ucfirst($provider) . ' API anahtarı ayarlanmamış. Ayarlar sayfasına gidin.']);
 }
 
 $system_prompt =
@@ -105,16 +121,14 @@ $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 if ($curl_err) {
-    echo json_encode(['error' => 'Ağ hatası: ' . $curl_err]);
-    exit;
+    json_exit(['error' => 'Ağ hatası: ' . $curl_err]);
 }
 
 $api_data = json_decode($response, true);
 
 if ($http_code >= 400) {
     $err_msg = $api_data['error']['message'] ?? $api_data['error']['msg'] ?? 'Bilinmeyen API hatası.';
-    echo json_encode(['error' => "API Hatası ({$http_code}): {$err_msg}"]);
-    exit;
+    json_exit(['error' => "API Hatası ({$http_code}): {$err_msg}"]);
 }
 
 // Sağlayıcıya göre yanıt içeriğini çıkar
@@ -125,8 +139,7 @@ if ($provider === 'anthropic') {
 }
 
 if (empty($content)) {
-    echo json_encode(['error' => 'AI boş yanıt döndürdü.']);
-    exit;
+    json_exit(['error' => 'AI boş yanıt döndürdü.']);
 }
 
 // Markdown kod blokları temizle (```json ... ``` veya ``` ... ```)
@@ -137,8 +150,7 @@ $content = trim($content);
 $transactions = json_decode($content, true);
 
 if (!is_array($transactions) || empty($transactions)) {
-    echo json_encode(['error' => 'Geçerli işlem bulunamadı veya JSON parse hatası.', 'raw' => mb_substr($content, 0, 500)]);
-    exit;
+    json_exit(['error' => 'Geçerli işlem bulunamadı veya JSON parse hatası.', 'raw' => mb_substr($content, 0, 500)]);
 }
 
 // Veritabanına kaydet
@@ -169,7 +181,7 @@ foreach ($transactions as $tx) {
     $saved++;
 }
 
-echo json_encode([
+json_exit([
     'success'      => true,
     'saved'        => $saved,
     'skipped'      => $skipped,

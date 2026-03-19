@@ -7,7 +7,21 @@ require_once __DIR__ . '/init_db.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST'
     && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
 
+    ini_set('display_errors', '0');
+    ini_set('log_errors', '1');
+    ob_start();
     header('Content-Type: application/json; charset=utf-8');
+
+    $json_exit = function(array $data, int $code = 200): never {
+        ob_end_clean();
+        http_response_code($code);
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit;
+    };
+
+    set_exception_handler(function (\Throwable $e) use ($json_exit): void {
+        $json_exit(['error' => 'Sunucu hatası: ' . $e->getMessage()], 500);
+    });
 
     $pdo      = db_connect();
     $rows     = $pdo->query("SELECT key, value FROM settings")->fetchAll();
@@ -25,8 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     ")->fetchAll();
 
     if (empty($tx_list)) {
-        echo json_encode(['error' => 'Son 30 günde hiç işlem bulunamadı. Önce işlem ekleyin veya PDF yükleyin.']);
-        exit;
+        $json_exit(['error' => 'Son 30 günde hiç işlem bulunamadı. Önce işlem ekleyin veya PDF yükleyin.']);
     }
 
     // API haritası
@@ -38,8 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 
     $api = $api_map[$provider] ?? $api_map['groq'];
     if (empty($api['key'])) {
-        echo json_encode(['error' => ucfirst($provider) . ' API anahtarı ayarlanmamış. Ayarlar sayfasına gidin.']);
-        exit;
+        $json_exit(['error' => ucfirst($provider) . ' API anahtarı ayarlanmamış. Ayarlar sayfasına gidin.']);
     }
 
     $system_prompt =
@@ -95,16 +107,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     curl_close($ch);
 
     if ($curl_err) {
-        echo json_encode(['error' => 'Ağ hatası: ' . $curl_err]);
-        exit;
+        $json_exit(['error' => 'Ağ hatası: ' . $curl_err]);
     }
 
     $api_data = json_decode($response, true);
 
     if ($http_code >= 400) {
         $err_msg = $api_data['error']['message'] ?? 'API hatası';
-        echo json_encode(['error' => "API Hatası ({$http_code}): {$err_msg}"]);
-        exit;
+        $json_exit(['error' => "API Hatası ({$http_code}): {$err_msg}"]);
     }
 
     $content = $provider === 'anthropic'
@@ -112,8 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         : ($api_data['choices'][0]['message']['content'] ?? '');
 
     if (empty($content)) {
-        echo json_encode(['error' => 'AI boş yanıt döndürdü.']);
-        exit;
+        $json_exit(['error' => 'AI boş yanıt döndürdü.']);
     }
 
     // Markdown temizle
@@ -124,8 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     $result = json_decode($content, true);
 
     if (!is_array($result)) {
-        echo json_encode(['error' => 'JSON parse hatası.', 'raw' => mb_substr($content, 0, 400)]);
-        exit;
+        $json_exit(['error' => 'JSON parse hatası.', 'raw' => mb_substr($content, 0, 400)]);
     }
 
     // Analiz sonucunu settings tablosunda önbellekle
@@ -133,8 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                    ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at")
         ->execute([':v' => json_encode($result, JSON_UNESCAPED_UNICODE)]);
 
-    echo json_encode(['success' => true, 'data' => $result, 'tx_count' => count($tx_list)]);
-    exit;
+    $json_exit(['success' => true, 'data' => $result, 'tx_count' => count($tx_list)]);
 }
 
 // ── Sayfa Yüklemesi ───────────────────────────────────────────────
