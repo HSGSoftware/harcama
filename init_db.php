@@ -64,8 +64,8 @@ try {
         'openai_api_key'    => '',
         'anthropic_api_key' => '',
         'groq_api_key'      => '',
-        'parser_model'      => 'groq|llama3-8b-8192',
-        'optimizer_model'   => 'groq|llama3-70b-8192',
+        'parser_model'      => 'groq|llama-3.1-8b-instant',
+        'optimizer_model'   => 'groq|llama-3.3-70b-versatile',
         'currency'          => 'TRY',
         // Alt klasörde çalışıyorsa: /harcama  |  Kök dizinde: (boş)
         'base_url'          => '',
@@ -76,6 +76,17 @@ try {
     ");
     foreach ($defaults as $key => $value) {
         $stmt->execute([':key' => $key, ':value' => $value]);
+    }
+
+    // Kullanımdan kalkan Groq model değerlerini güncelle
+    $deprecated = [
+        'groq|llama3-8b-8192'    => 'groq|llama-3.1-8b-instant',
+        'groq|llama3-70b-8192'   => 'groq|llama-3.3-70b-versatile',
+        'groq|mixtral-8x7b-32768'=> 'groq|llama-3.3-70b-versatile',
+    ];
+    $upd = $pdo->prepare("UPDATE settings SET value = :new WHERE key IN ('parser_model','optimizer_model') AND value = :old");
+    foreach ($deprecated as $old => $new) {
+        $upd->execute([':old' => $old, ':new' => $new]);
     }
 
     // CLI'dan çalıştırıldığında bilgi ver

@@ -29,9 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
         'openai|gpt-4o-mini',
         'anthropic|claude-3-5-sonnet-latest',
         'anthropic|claude-3-haiku-20240307',
-        'groq|llama3-8b-8192',
-        'groq|llama3-70b-8192',
-        'groq|mixtral-8x7b-32768',
+        'groq|llama-3.1-8b-instant',
+        'groq|llama-3.3-70b-versatile',
+        'groq|llama-3.1-70b-versatile',
+        'groq|gemma2-9b-it',
     ];
 
     $stmt = $pdo->prepare("
@@ -84,9 +85,10 @@ $model_options = [
     'openai|gpt-4o-mini'                     => 'OpenAI — gpt-4o-mini',
     'anthropic|claude-3-5-sonnet-latest'     => 'Anthropic — claude-3-5-sonnet-latest',
     'anthropic|claude-3-haiku-20240307'      => 'Anthropic — claude-3-haiku-20240307',
-    'groq|llama3-8b-8192'                    => 'Groq — llama3-8b-8192',
-    'groq|llama3-70b-8192'                   => 'Groq — llama3-70b-8192',
-    'groq|mixtral-8x7b-32768'               => 'Groq — mixtral-8x7b-32768',
+    'groq|llama-3.1-8b-instant'              => 'Groq — llama-3.1-8b-instant (Hızlı)',
+    'groq|llama-3.3-70b-versatile'           => 'Groq — llama-3.3-70b-versatile (Güçlü)',
+    'groq|llama-3.1-70b-versatile'           => 'Groq — llama-3.1-70b-versatile',
+    'groq|gemma2-9b-it'                      => 'Groq — gemma2-9b-it',
 ];
 
 require_once __DIR__ . '/layout.php';
