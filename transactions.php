@@ -145,7 +145,7 @@ require_once __DIR__ . '/layout.php';
 ?>
 
 <div x-data="{
-  activeTab: '<?= $active_tab ?>',
+  activeTab: <?= htmlspecialchars(json_encode($active_tab), ENT_QUOTES, 'UTF-8') ?>,
   txType: 'expense',
 
   /* ── PDF Akışı ── */
@@ -160,7 +160,7 @@ require_once __DIR__ . '/layout.php';
   clarifyIndex: 0,
   clarifyItem: null,
   showClarify: false,
-  catList: <?= json_encode(array_keys($cat_meta)) ?>,
+  catList: <?= htmlspecialchars(json_encode(array_keys($cat_meta)), ENT_QUOTES, 'UTF-8') ?>,
 
   isUnclear(tx) {
     const d = tx.date || '';
