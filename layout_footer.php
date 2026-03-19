@@ -6,7 +6,7 @@
       <div class="flex items-center justify-around px-2 h-16">
 
         <!-- Dashboard -->
-        <a href="/index.php"
+        <a href="<?= url('/index.php') ?>"
            class="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200
                   <?= $current_page === 'index' ? 'text-brand-400' : 'text-slate-500 hover:text-slate-300' ?>">
           <?php if ($current_page === 'index'): ?>
@@ -20,7 +20,7 @@
         </a>
 
         <!-- İşlemler -->
-        <a href="/transactions.php"
+        <a href="<?= url('/transactions.php') ?>"
            class="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200
                   <?= $current_page === 'transactions' ? 'text-brand-400' : 'text-slate-500 hover:text-slate-300' ?>">
           <svg class="w-5 h-5" fill="<?= $current_page === 'transactions' ? 'currentColor' : 'none' ?>" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,7 +31,7 @@
         </a>
 
         <!-- AI Analiz - Merkez Aksiyon Butonu -->
-        <a href="/ai_optimization.php"
+        <a href="<?= url('/ai_optimization.php') ?>"
            class="relative flex flex-col items-center gap-1 -mt-5">
           <div class="w-14 h-14 rounded-2xl shadow-lg shadow-brand-500/30 flex items-center justify-center transition-transform active:scale-95
                       <?= $current_page === 'ai_optimization' ? 'bg-brand-500' : 'bg-gradient-to-br from-brand-500 to-purple-600' ?>">
@@ -44,7 +44,7 @@
         </a>
 
         <!-- Yatırımlar -->
-        <a href="/investments.php"
+        <a href="<?= url('/investments.php') ?>"
            class="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200
                   <?= $current_page === 'investments' ? 'text-brand-400' : 'text-slate-500 hover:text-slate-300' ?>">
           <svg class="w-5 h-5" fill="<?= $current_page === 'investments' ? 'currentColor' : 'none' ?>" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,7 +55,7 @@
         </a>
 
         <!-- Ayarlar -->
-        <a href="/settings.php"
+        <a href="<?= url('/settings.php') ?>"
            class="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200
                   <?= $current_page === 'settings' ? 'text-brand-400' : 'text-slate-500 hover:text-slate-300' ?>">
           <svg class="w-5 h-5" fill="<?= $current_page === 'settings' ? 'currentColor' : 'none' ?>" stroke="currentColor" viewBox="0 0 24 24">

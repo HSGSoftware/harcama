@@ -64,12 +64,11 @@ try {
         'openai_api_key'    => '',
         'anthropic_api_key' => '',
         'groq_api_key'      => '',
-        // PDF ayıklama için kullanılacak model
         'parser_model'      => 'groq|llama3-8b-8192',
-        // Bütçe analizi için kullanılacak model
         'optimizer_model'   => 'groq|llama3-70b-8192',
-        // Para birimi gösterimi
         'currency'          => 'TRY',
+        // Alt klasörde çalışıyorsa: /harcama  |  Kök dizinde: (boş)
+        'base_url'          => '',
     ];
 
     $stmt = $pdo->prepare("
@@ -102,6 +101,24 @@ try {
  * $pdo değişkenini döndürmek yerine global bağlamda kullanılmasını sağlamak için
  * db_connect() yardımcısını da burada tanımlıyoruz.
  */
+/**
+ * Uygulama URL'lerini base_url ayarına göre oluşturur.
+ * Örnek: url('/settings.php') → /harcama/settings.php
+ */
+function url(string $path = ''): string
+{
+    static $base = null;
+    if ($base === null) {
+        try {
+            $raw  = db_connect()->query("SELECT value FROM settings WHERE key='base_url'")->fetchColumn();
+            $base = rtrim((string)$raw, '/');
+        } catch (\Throwable $e) {
+            $base = '';
+        }
+    }
+    return $base . '/' . ltrim($path, '/');
+}
+
 function db_connect(): PDO
 {
     static $instance = null;
@@ -134,7 +151,7 @@ if (php_sapi_name() !== 'cli' && basename($_SERVER['PHP_SELF']) === 'init_db.php
         <p class="text-emerald-400">✓ transactions tablosu</p>
         <p class="text-emerald-400">✓ Varsayılan ayarlar</p>
       </div>
-      <a href="/settings.php"
+      <a href="<?= url('/settings.php') ?>"
          class="px-6 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium text-sm transition-colors">
         API Anahtarlarını Ayarla →
       </a>

@@ -68,7 +68,7 @@ require_once __DIR__ . '/layout.php';
 
   <!-- Hızlı Eylemler -->
   <div class="grid grid-cols-2 gap-3">
-    <a href="/transactions.php"
+    <a href="<?= url('/transactions.php') ?>"
        class="flex items-center gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800/60
               hover:border-brand-500/30 transition-colors card-hover">
       <div class="w-9 h-9 rounded-lg bg-brand-500/10 flex items-center justify-center shrink-0">
@@ -82,7 +82,7 @@ require_once __DIR__ . '/layout.php';
       </div>
     </a>
 
-    <a href="/ai_optimization.php"
+    <a href="<?= url('/ai_optimization.php') ?>"
        class="flex items-center gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800/60
               hover:border-purple-500/30 transition-colors card-hover">
       <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
@@ -112,13 +112,13 @@ require_once __DIR__ . '/layout.php';
   <div class="bg-slate-900/60 border border-slate-800/60 rounded-2xl overflow-hidden">
     <div class="px-4 py-3 border-b border-slate-800/40 flex items-center justify-between">
       <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Son İşlemler</h3>
-      <a href="/transactions.php" class="text-xs text-brand-400 hover:text-brand-300 transition-colors">Tümü →</a>
+      <a href="<?= url('/transactions.php') ?>" class="text-xs text-brand-400 hover:text-brand-300 transition-colors">Tümü →</a>
     </div>
 
     <?php if (empty($recent)): ?>
       <div class="p-8 text-center">
         <p class="text-slate-500 text-sm">Henüz işlem yok.</p>
-        <a href="/transactions.php" class="text-brand-400 text-xs hover:underline mt-1 inline-block">
+        <a href="<?= url('/transactions.php') ?>" class="text-brand-400 text-xs hover:underline mt-1 inline-block">
           İlk işlemi ekle →
         </a>
       </div>

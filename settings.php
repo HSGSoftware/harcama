@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
         'parser_model',
         'optimizer_model',
         'currency',
+        'base_url',
     ];
 
     // İzin verilen model değerleri (injection önlemi)
@@ -41,6 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
 
     foreach ($allowed_keys as $key) {
         $value = trim($_POST[$key] ?? '');
+
+        // base_url: başta/sonda slash temizle, boş olabilir
+        if ($key === 'base_url') {
+            $value = rtrim($value, '/');
+            if ($value !== '' && !str_starts_with($value, '/')) {
+                $value = '/' . $value;
+            }
+        }
 
         // Model alanları için whitelist kontrolü
         if (in_array($key, ['parser_model', 'optimizer_model'])) {
@@ -110,7 +119,7 @@ require_once __DIR__ . '/layout.php';
   </div>
   <?php endif; ?>
 
-  <form method="POST" action="/settings.php" class="space-y-5">
+    <form method="POST" action="<?= url('/settings.php') ?>" class="space-y-5">
     <input type="hidden" name="save_settings" value="1">
 
     <!-- ============================================================
@@ -320,7 +329,36 @@ require_once __DIR__ . '/layout.php';
         </div>
       </div>
 
-      <div class="p-4">
+      <div class="p-4 space-y-4">
+
+        <!-- Uygulama Base URL -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-2">
+            <span class="inline-flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+              </svg>
+              Uygulama Base URL
+            </span>
+          </label>
+          <input
+            type="text"
+            name="base_url"
+            value="<?= $s('base_url') ?>"
+            placeholder="Kök dizinde boş bırak · Alt klasör için: /harcama"
+            class="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-slate-200
+                   placeholder-slate-600 focus:outline-none focus:border-brand-500/60 focus:ring-1 focus:ring-brand-500/20
+                   transition-colors font-mono"
+          >
+          <p class="text-xs text-slate-600 mt-1.5">
+            Uygulama <code class="text-slate-500">example.com/harcama/</code> altında çalışıyorsa <code class="text-slate-500">/harcama</code> yaz.
+            Kök dizinde çalışıyorsa boş bırak.
+          </p>
+        </div>
+
+        <!-- Para Birimi -->
+        <div>
         <label class="block text-xs font-medium text-slate-300 mb-2">Para Birimi</label>
         <div class="relative">
           <select name="currency"
@@ -337,6 +375,7 @@ require_once __DIR__ . '/layout.php';
             </svg>
           </div>
         </div>
+        </div><!-- /para birimi -->
       </div>
     </div>
 
@@ -352,7 +391,7 @@ require_once __DIR__ . '/layout.php';
 
     <!-- Veritabanı sıfırlama linki (dikkatli kullanım) -->
     <div class="text-center">
-      <a href="/init_db.php" class="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+      <a href="<?= url('/init_db.php') ?>" class="text-xs text-slate-600 hover:text-slate-400 transition-colors">
         Veritabanını başlat / onar
       </a>
     </div>
