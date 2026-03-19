@@ -768,113 +768,132 @@ window.__txCatList = <?= json_encode(array_keys($cat_meta), JSON_UNESCAPED_UNICO
   <!-- ═══════════════════════════════
        CLARIFICATION POPUP (modal)
        ═══════════════════════════════ -->
-  <!-- x-cloak: Alpine başlayana kadar gizli tut (style="display:none" x-show ile çakışır) -->
+  <!-- Clarification bottom-sheet -->
   <div x-cloak x-show="showClarify"
        x-transition:enter="transition-opacity ease-out duration-200"
        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
        x-transition:leave="transition-opacity ease-in duration-150"
        x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
        class="fixed inset-0 z-50 flex items-end justify-center">
-    <!-- Backdrop -->
+
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="skipClarify()"></div>
 
-    <!-- Sheet -->
-    <div class="relative bg-slate-900 border-t border-slate-700/60 rounded-t-2xl w-full max-w-lg p-5 space-y-4"
-         x-show="showClarify" x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
+    <!-- Sheet: max-h ile sınırlandır, içeriği kaydır -->
+    <div class="relative bg-slate-900 border-t border-slate-800 rounded-t-2xl w-full max-w-lg
+                flex flex-col overflow-hidden"
+         style="max-height: 88vh;"
+         x-show="showClarify"
+         x-transition:enter="transition ease-out duration-250"
+         x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
 
-      <!-- Başlık -->
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs text-amber-400 font-semibold uppercase tracking-wider">
-            Belirsiz İşlem <span x-text="clarifyIndex+1"></span> / <span x-text="clarifyQueue.length"></span>
-          </p>
-          <h3 class="text-sm font-bold text-slate-100 mt-0.5">Bu işlemi tanımlayın</h3>
-        </div>
-        <button @click="skipClarify()" class="text-slate-500 hover:text-slate-300 transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-      </div>
+      <!-- Sabit başlık (kaydırılmaz) -->
+      <div class="px-4 pt-3 pb-2 flex-shrink-0">
+        <!-- Tutamaç çubuğu -->
+        <div class="w-8 h-1 rounded-full bg-slate-700 mx-auto mb-3"></div>
 
-      <!-- İlerleme çubuğu -->
-      <div class="bg-slate-800/60 rounded-full h-1 overflow-hidden">
-        <div class="h-full bg-amber-400 rounded-full transition-all"
-             :style="`width: ${((clarifyIndex) / clarifyQueue.length) * 100}%`"></div>
-      </div>
-
-      <template x-if="clarifyItem">
-        <div class="space-y-3">
-          <!-- Açıklama -->
+        <div class="flex items-center justify-between mb-2">
           <div>
-            <label class="text-xs text-slate-400 mb-1.5 block">Açıklama / İşlem Adı</label>
-            <input type="text" x-model="clarifyItem.description"
-                   :placeholder="clarifyItem.description || 'Örn: Migros market alışveriş'"
-                   class="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-slate-200
-                          placeholder-slate-600 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/20 transition-colors">
+            <p class="text-[11px] text-amber-400 font-semibold uppercase tracking-wider">
+              Belirsiz İşlem <span x-text="clarifyIndex+1"></span> / <span x-text="clarifyQueue.length"></span>
+            </p>
+            <h3 class="text-sm font-bold text-slate-100">Bu işlemi kontrol edin</h3>
           </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <!-- Tarih -->
-            <div>
-              <label class="text-xs text-slate-400 mb-1.5 flex items-center gap-1 block">
-                Tarih
-                <span x-show="!clarifyItem.date" class="text-amber-400 text-[9px]">⚠ eksik</span>
-              </label>
-              <input type="date" x-model="clarifyItem.date"
-                     :class="!clarifyItem.date ? 'border-amber-500/50' : 'border-slate-700/50'"
-                     class="w-full bg-slate-800/60 border rounded-xl px-3 py-3 text-sm text-slate-200
-                            focus:outline-none focus:border-amber-500/60 transition-colors">
-            </div>
-            <!-- Tutar -->
-            <div>
-              <label class="text-xs text-slate-400 mb-1.5 block">Tutar (<?= $symbol ?>)</label>
-              <input type="number" x-model.number="clarifyItem.amount" step="0.01" min="0"
-                     class="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-3 text-sm text-slate-200
-                            focus:outline-none focus:border-amber-500/60 transition-colors">
-            </div>
-          </div>
-
-          <!-- Kategori -->
-          <div>
-            <label class="text-xs text-slate-400 mb-1.5 flex items-center gap-1 block">
-              Kategori
-              <span x-show="clarifyItem.category==='Diğer'" class="text-amber-400 text-[9px]">⚠ genel</span>
-            </label>
-            <div class="grid grid-cols-4 gap-1.5">
-              <template x-for="c in ['Market','Restoran','Ulaşım','Fatura','Abonelik','Teknoloji','Sağlık','Giyim','Eğlence','Spor','Taksit','Diğer']" :key="c">
-                <button type="button" @click="clarifyItem.category=c"
-                        :class="clarifyItem.category===c ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-slate-800/40 border-slate-700/30 text-slate-400'"
-                        class="py-1.5 px-1 rounded-lg border text-[10px] font-medium transition-colors text-center truncate"
-                        x-text="c">
-                </button>
-              </template>
-            </div>
-          </div>
-
-          <!-- Tip toggle -->
-          <div class="flex gap-2">
-            <button type="button" @click="clarifyItem.type='expense'"
-                    :class="clarifyItem.type==='expense' ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'bg-slate-800/40 border-slate-700/30 text-slate-500'"
-                    class="flex-1 py-2.5 rounded-xl border text-xs font-semibold transition-colors">↓ Gider</button>
-            <button type="button" @click="clarifyItem.type='income'"
-                    :class="clarifyItem.type==='income' ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' : 'bg-slate-800/40 border-slate-700/30 text-slate-500'"
-                    class="flex-1 py-2.5 rounded-xl border text-xs font-semibold transition-colors">↑ Gelir</button>
-          </div>
-
-          <!-- Butonlar -->
-          <div class="grid grid-cols-2 gap-3 pt-1">
-            <button @click="skipClarify()"
-                    class="py-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm font-medium text-slate-400 hover:text-slate-200 transition-colors">
-              Geç →
+          <div class="flex items-center gap-2">
+            <!-- Tümünü geç -->
+            <button @click="showClarify=false; pdfState='review'"
+                    class="text-[10px] text-slate-500 hover:text-slate-300 bg-slate-800/60 px-2 py-1 rounded-lg transition-colors">
+              Tümünü Geç
             </button>
-            <button @click="confirmClarify()"
-                    class="py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-sm font-bold text-white transition-colors">
-              Onayla ✓
+            <button @click="skipClarify()" class="text-slate-500 hover:text-slate-300 transition-colors p-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
         </div>
-      </template>
-    </div>
+
+        <!-- İlerleme çubuğu -->
+        <div class="bg-slate-800/60 rounded-full h-1 overflow-hidden">
+          <div class="h-full bg-amber-400 rounded-full transition-all"
+               :style="`width: ${Math.round((clarifyIndex / clarifyQueue.length) * 100)}%`"></div>
+        </div>
+      </div>
+
+      <!-- Kaydırılabilir içerik -->
+      <div class="overflow-y-auto flex-1 px-4 pb-4">
+        <template x-if="clarifyItem">
+          <div class="space-y-2.5">
+
+            <!-- Açıklama -->
+            <div>
+              <label class="text-[11px] font-medium text-slate-400 mb-1 block">Açıklama</label>
+              <input type="text" x-model="clarifyItem.description"
+                     class="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-sm text-slate-200
+                            placeholder-slate-600 focus:outline-none focus:border-amber-500/60 transition-colors">
+            </div>
+
+            <!-- Tarih + Tutar yan yana -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[11px] font-medium text-slate-400 mb-1 flex items-center gap-1 block">
+                  Tarih
+                  <span x-show="!clarifyItem.date" class="text-amber-400 text-[9px]">⚠</span>
+                </label>
+                <input type="date" x-model="clarifyItem.date"
+                       :class="!clarifyItem.date ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-700/50 bg-slate-800/60'"
+                       class="w-full border rounded-xl px-2.5 py-2.5 text-sm text-slate-200
+                              focus:outline-none focus:border-amber-500/60 transition-colors">
+              </div>
+              <div>
+                <label class="text-[11px] font-medium text-slate-400 mb-1 block">Tutar (<?= $symbol ?>)</label>
+                <input type="number" x-model.number="clarifyItem.amount" step="0.01" min="0"
+                       class="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl px-2.5 py-2.5 text-sm text-slate-200
+                              focus:outline-none focus:border-amber-500/60 transition-colors">
+              </div>
+            </div>
+
+            <!-- Kategori — kompakt 4 sütun -->
+            <div>
+              <label class="text-[11px] font-medium text-slate-400 mb-1.5 block">Kategori</label>
+              <div class="grid grid-cols-4 gap-1">
+                <template x-for="c in ['Market','Restoran','Ulaşım','Fatura','Abonelik','Teknoloji','Sağlık','Giyim','Eğlence','Spor','Taksit','Diğer']" :key="c">
+                  <button type="button" @click="clarifyItem.category=c"
+                          :class="clarifyItem.category===c
+                            ? 'bg-amber-500/25 border-amber-500/60 text-amber-300 font-semibold'
+                            : 'bg-slate-800/40 border-slate-700/30 text-slate-500'"
+                          class="py-1.5 rounded-lg border text-[10px] transition-colors text-center truncate px-0.5"
+                          x-text="c">
+                  </button>
+                </template>
+              </div>
+            </div>
+
+            <!-- Gelir / Gider + Butonlar tek satırda -->
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" @click="clarifyItem.type='expense'"
+                      :class="clarifyItem.type==='expense' ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'bg-slate-800/40 border-slate-700/30 text-slate-500'"
+                      class="py-2 rounded-xl border text-xs font-semibold transition-colors">↓ Gider</button>
+              <button type="button" @click="clarifyItem.type='income'"
+                      :class="clarifyItem.type==='income' ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' : 'bg-slate-800/40 border-slate-700/30 text-slate-500'"
+                      class="py-2 rounded-xl border text-xs font-semibold transition-colors">↑ Gelir</button>
+            </div>
+
+            <!-- Onayla / Geç -->
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button @click="skipClarify()"
+                      class="py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-sm font-medium text-slate-400 hover:text-slate-200 transition-colors">
+                Geç →
+              </button>
+              <button @click="confirmClarify()"
+                      class="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-sm font-bold text-white transition-colors active:scale-95">
+                Onayla ✓
+              </button>
+            </div>
+
+          </div>
+        </template>
+      </div><!-- /scroll area -->
+    </div><!-- /sheet -->
   </div>
 
 </div>

@@ -193,15 +193,49 @@ if (!is_array($transactions) || empty($transactions)) {
     json_exit(['error' => 'AI geçerli işlem döndürmedi. Ham yanıt: ' . $raw_preview]);
 }
 
+// ── Tarih normalizasyonu ──────────────────────────────────────────
+// AI farklı formatlar döndürebilir: DD.MM.YYYY, DD/MM/YYYY, YYYY.MM.DD vb.
+function normalize_date(?string $raw): ?string {
+    if ($raw === null || trim($raw) === '' || trim($raw) === 'null') return null;
+    $d = trim($raw);
+
+    // Zaten doğru: YYYY-MM-DD
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) return $d;
+
+    // DD.MM.YYYY | DD/MM/YYYY | DD-MM-YYYY
+    if (preg_match('/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/', $d, $m)) {
+        return sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
+    }
+
+    // YYYY.MM.DD | YYYY/MM/DD
+    if (preg_match('/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})$/', $d, $m)) {
+        return sprintf('%04d-%02d-%02d', (int)$m[1], (int)$m[2], (int)$m[3]);
+    }
+
+    // DD MM YYYY (boşluklu)
+    if (preg_match('/^(\d{1,2})\s+(\d{1,2})\s+(\d{4})$/', $d, $m)) {
+        return sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
+    }
+
+    // PHP strtotime son çare
+    $ts = @strtotime($d);
+    if ($ts !== false && $ts > 0) {
+        return date('Y-m-d', $ts);
+    }
+
+    return null;
+}
+
 // Veriyi normalize et; belirsiz olanları işaretle
 $unclear_count = 0;
 $normalized    = [];
 foreach ($transactions as $tx) {
-    $date = (string)($tx['date'] ?? '');
+    // Tarih: çok formatlı dönüşüm
+    $date = normalize_date($tx['date'] ?? null);
     $desc = trim($tx['description'] ?? '');
     $cat  = trim($tx['category']    ?? 'Diğer');
 
-    $has_unclear_date = !$date || $date === 'null' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date);
+    $has_unclear_date = ($date === null);
     $has_unclear_desc = mb_strlen($desc) < 3 || in_array(strtolower($desc), ['pos', 'banka', 'işlem', 'transfer', 'havale', 'eft']);
     $has_unclear_cat  = $cat === 'Diğer' || empty($cat);
 
