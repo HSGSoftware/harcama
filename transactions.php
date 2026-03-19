@@ -144,6 +144,12 @@ $page_url = fn(int $p) => url('/transactions.php').'?'.http_build_query(['tab'=>
 require_once __DIR__ . '/layout.php';
 ?>
 
+<?php /* ── JSON verisini script tag'e taşı: x-data attribute'u içinde json_encode
+          kullanmak HTML attribute parser'ını kırar (çift tırnak çakışması) ── */ ?>
+<script>
+window.__txCatList = <?= json_encode(array_keys($cat_meta), JSON_UNESCAPED_UNICODE) ?>;
+</script>
+
 <div x-data="{
   activeTab: '<?= $active_tab ?>',
   txType: 'expense',
@@ -160,7 +166,7 @@ require_once __DIR__ . '/layout.php';
   clarifyIndex: 0,
   clarifyItem: null,
   showClarify: false,
-  catList: <?= json_encode(array_keys($cat_meta)) ?>,
+  catList: window.__txCatList || [],
 
   isUnclear(tx) {
     const d = tx.date || '';
@@ -216,14 +222,16 @@ require_once __DIR__ . '/layout.php';
 
   confirmClarify() {
     const i = this.clarifyItem._idx;
-    Object.assign(this.pdfResults[i], {
-      date: this.clarifyItem.date,
+    // Object.assign Alpine proxy'yi tetiklemeyebilir; index ataması kesinlikle reaktif
+    this.pdfResults[i] = {
+      ...this.pdfResults[i],
+      date:        this.clarifyItem.date,
       description: this.clarifyItem.description,
-      amount: this.clarifyItem.amount,
-      type: this.clarifyItem.type,
-      category: this.clarifyItem.category,
-      unclear: false,
-    });
+      amount:      parseFloat(this.clarifyItem.amount) || 0,
+      type:        this.clarifyItem.type,
+      category:    this.clarifyItem.category,
+      unclear:     false,
+    };
     this.clarifyIndex++;
     if (this.clarifyIndex < this.clarifyQueue.length) {
       this.clarifyItem = {...this.clarifyQueue[this.clarifyIndex]};
@@ -760,9 +768,13 @@ require_once __DIR__ . '/layout.php';
   <!-- ═══════════════════════════════
        CLARIFICATION POPUP (modal)
        ═══════════════════════════════ -->
-  <div x-show="showClarify" x-transition
-       class="fixed inset-0 z-50 flex items-end justify-center"
-       style="display:none">
+  <!-- x-cloak: Alpine başlayana kadar gizli tut (style="display:none" x-show ile çakışır) -->
+  <div x-cloak x-show="showClarify"
+       x-transition:enter="transition-opacity ease-out duration-200"
+       x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+       x-transition:leave="transition-opacity ease-in duration-150"
+       x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 flex items-end justify-center">
     <!-- Backdrop -->
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="skipClarify()"></div>
 

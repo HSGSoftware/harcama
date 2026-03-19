@@ -63,24 +63,29 @@ foreach ($transactions as $tx) {
     $saved++;
 }
 
-// Abonelik/taksit olarak işaretlenenleri subscriptions tablosuna da kaydet
+// Abonelik/taksit işaretlilerini subscriptions tablosuna ekle (aynı isim yoksa)
 $sub_saved = 0;
+$sub_check = $pdo->prepare("SELECT COUNT(*) FROM subscriptions WHERE name=? AND type=?");
 $sub_stmt  = $pdo->prepare(
-    "INSERT OR IGNORE INTO subscriptions (name, amount, category, type, start_date, auto_detected)
+    "INSERT INTO subscriptions (name, amount, category, type, start_date, auto_detected)
      VALUES (:name, :amount, :category, :type, :start_date, 1)"
 );
 foreach ($transactions as $tx) {
     if (!empty($tx['is_subscription']) || !empty($tx['is_installment'])) {
         $sub_type = !empty($tx['is_installment']) ? 'installment' : 'subscription';
-        $name     = mb_substr(trim($tx['description'] ?? ''), 0, 100) ?: 'Bilinmeyen Abonelik';
-        $sub_stmt->execute([
-            ':name'       => $name,
-            ':amount'     => abs((float)($tx['amount'] ?? 0)),
-            ':category'   => $sub_type === 'installment' ? 'Taksit' : 'Abonelik',
-            ':type'       => $sub_type,
-            ':start_date' => date('Y-m-d'),
-        ]);
-        if ($sub_stmt->rowCount() > 0) $sub_saved++;
+        $name     = mb_substr(trim($tx['description'] ?? ''), 0, 100) ?: 'Bilinmeyen';
+        // Aynı isim+tip varsa tekrar ekleme
+        $sub_check->execute([$name, $sub_type]);
+        if ((int)$sub_check->fetchColumn() === 0) {
+            $sub_stmt->execute([
+                ':name'       => $name,
+                ':amount'     => abs((float)($tx['amount'] ?? 0)),
+                ':category'   => $sub_type === 'installment' ? 'Taksit' : 'Abonelik',
+                ':type'       => $sub_type,
+                ':start_date' => date('Y-m-d'),
+            ]);
+            $sub_saved++;
+        }
     }
 }
 

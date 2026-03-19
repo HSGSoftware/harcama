@@ -184,9 +184,16 @@ $sub_load  = (float)$pdo->query("SELECT COALESCE(SUM(amount),0) FROM subscriptio
 require_once __DIR__ . '/layout.php';
 ?>
 
+<?php /* ── Aynı html-attribute/json_encode çakışmasını önle ── */ ?>
+<script>
+window.__aiLastAnalysis = <?= $cached_result
+    ? json_encode($cached_result, JSON_UNESCAPED_UNICODE)
+    : 'null' ?>;
+</script>
+
 <div x-data="{
   state: 'idle',
-  result: <?= $cached_result ? json_encode($cached_result, JSON_UNESCAPED_UNICODE) : 'null' ?>,
+  result: window.__aiLastAnalysis,
   txCount: 0,
   errorMsg: '',
 
